@@ -4,6 +4,12 @@
 using CheckersGameProject.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddCors(o => {
+    o.AddDefaultPolicy(x => x
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+});
 
 // 1. Add Services to the container
 builder.Services.AddControllers();
