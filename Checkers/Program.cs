@@ -26,14 +26,14 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<GameService>();
 
 var app = builder.Build();
-
+app.UseCors("AllowNextJS");
 // 2. Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseCors("AllowNextJS");
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
