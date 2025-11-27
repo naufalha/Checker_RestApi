@@ -21,7 +21,7 @@ namespace CheckersGameProject.GameLogic
         
         private int _movesWithoutCapture;
         private int _movesWithoutKing; 
-        private const int _maxMovesWithoutProgress = 40; 
+        private const int _maxMovesWithoutProgress = 10; 
 
         // --- PROPERTIES ---
         public IBoard Board => _board;
@@ -81,7 +81,7 @@ namespace CheckersGameProject.GameLogic
 
         public void FinishGame(Action<IPlayer> showGameStatusCallback)
         {
-            IPlayer winner = null;
+            IPlayer ?winner = null;
             if (!CanMakeaMove(_currentPlayer))
             {
                 _status = StatusType.Win;
