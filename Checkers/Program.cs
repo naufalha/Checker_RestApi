@@ -4,11 +4,15 @@
 using CheckersGameProject.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddCors(o => {
-    o.AddDefaultPolicy(x => x
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowNextJS",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:3000") // URL Frontend kamu
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
 });
 
 // 1. Add Services to the container
@@ -29,7 +33,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseCors("AllowNextJS");
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
