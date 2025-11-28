@@ -9,7 +9,7 @@ namespace CheckersGameProject.GameLogic
 {
     public class CheckersGame
     {
-        // --- FIELDS (Strictly UML) ---
+     
         private IBoard _board;
         private Dictionary<IPlayer, List<IPiece>> _playerData;
         private List<IPlayer> _players;

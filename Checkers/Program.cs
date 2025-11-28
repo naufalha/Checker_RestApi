@@ -27,6 +27,7 @@ builder.Services.AddSingleton<GameService>();
 
 var app = builder.Build();
 app.UseCors("AllowNextJS");
+
 // 2. Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
