@@ -8,3 +8,5 @@ namespace CheckersGameProject.Api.DTOs
         public int ToY { get; set; }
     }
 }
+
+

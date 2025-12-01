@@ -4,8 +4,8 @@ namespace CheckersGameProject.Models
 {
     public class CheckersBoard : IBoard
     {
-        private ICell[,] _squares;
-        public ICell[,] Squares => _squares;
+        private Cell[,] _squares;
+        public Cell[,] Squares => _squares;
 
         public CheckersBoard()
         {
@@ -15,8 +15,6 @@ namespace CheckersGameProject.Models
                 for (int x = 0; x < 8; x++)
                 {
                     _squares[y, x] = new Cell(x, y);
-                    // HAPUS logic penempatan bidak disini.
-                    // Biarkan kosong. Logic itu milik CheckersGame.
                 }
             }
         }

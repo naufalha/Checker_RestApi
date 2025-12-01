@@ -1,9 +1,10 @@
-using CheckersGameProject.Contracts;
 using CheckersGameProject.Core;
+using CheckersGameProject.Contracts;
 
 namespace CheckersGameProject.Models
 {
-    public class Cell : ICell
+    // Ubah class jadi struct (Value Type)
+    public struct Cell 
     {
         public Position Position { get; set; }
         public IPiece? Piece { get; set; }
@@ -11,7 +12,7 @@ namespace CheckersGameProject.Models
         public Cell(int x, int y)
         {
             Position = new Position(x, y);
-            Piece = null; // Default kosong
+            Piece = null;
         }
     }
 }

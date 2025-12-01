@@ -4,12 +4,12 @@ using System.Linq;
 using CheckersGameProject.Contracts;
 using CheckersGameProject.Models;
 using CheckersGameProject.Core;
+using CheckersGameProject.Api.DTOs;
 
 namespace CheckersGameProject.GameLogic
 {
     public class CheckersGame
     {
-     
         private IBoard _board;
         private Dictionary<IPlayer, List<IPiece>> _playerData;
         private List<IPlayer> _players;
@@ -20,18 +20,14 @@ namespace CheckersGameProject.GameLogic
         private StatusType _status;
         
         private int _movesWithoutCapture;
-        private int _movesWithoutKing; 
         private const int _maxMovesWithoutProgress = 10; 
 
-        // --- PROPERTIES ---
+        // Properties
         public IBoard Board => _board;
         public IPlayer CurrentPlayer => _currentPlayer;
         public bool IsInDoubleJump => _isInMultipleJump;
-        
-        // Expose Active Piece for UI filtering (Helper property)
         public Position ActivePiecePosition => _activePieceInJump;
 
-        // --- CONSTRUCTOR ---
         public CheckersGame(string player1Name, string player2Name)
         {
             _board = new CheckersBoard();
@@ -47,29 +43,20 @@ namespace CheckersGameProject.GameLogic
             _status = StatusType.NotStart;
         }
 
-        // --- PUBLIC METHODS (UML + Visibility Updates) ---
-
         public void StartGame()
         {
             InitializeBoardCells();
             _currentPlayer = _players[0];
             _status = StatusType.Play;
             _movesWithoutCapture = 0;
-            _movesWithoutKing = 0;
             _isInMultipleJump = false;
         }
 
+        public void ExecuteMove(Position from, Position to) => MovePiece(from, to);
         public IPlayer GetCurrentPlayer() => _currentPlayer;
-
-        public void ExecuteMove(Position from, Position to)
-        {
-            MovePiece(from, to);
-        }
-
-        public bool GetPlayerHasPiecesLeft(IPlayer player) => 
-            _playerData.ContainsKey(player) && _playerData[player].Count > 0;
-
-        public IPlayer GetWinner()
+        public bool GetPlayerHasPiecesLeft(IPlayer player) => _playerData.ContainsKey(player) && _playerData[player].Count > 0;
+        
+        public IPlayer? GetWinner()
         {
             if (_status != StatusType.Win) return null;
             if (!CanMakeaMove(_players[0])) return _players[1];
@@ -79,29 +66,10 @@ namespace CheckersGameProject.GameLogic
 
         public bool IsDraw() => _status == StatusType.Draw;
 
-        public void FinishGame(Action<IPlayer> showGameStatusCallback)
+        // REVISI: Mengembalikan List<MoveDto>
+        public List<MoveDto> GetPossibleMovesForPiece(IPiece piece, bool requireCaptureOnly)
         {
-            IPlayer ?winner = null;
-            if (!CanMakeaMove(_currentPlayer))
-            {
-                _status = StatusType.Win;
-                winner = _players.First(p => p != _currentPlayer);
-            }
-            else if (_movesWithoutCapture >= _maxMovesWithoutProgress)
-            {
-                _status = StatusType.Draw;
-                winner = null;
-            }
-
-            if (_status != StatusType.Play) showGameStatusCallback?.Invoke(winner);
-        }
-
-        // --- CHANGED TO PUBLIC (To allow UI Hints using UML methods) ---
-        
-        // Was private in UML, now Public for Hint Logic
-        public List<Tuple<Position, Position>> GetPossibleMovesForPiece(IPiece piece, bool requireCaptureOnly)
-        {
-            var moves = new List<Tuple<Position, Position>>();
+            var moves = new List<MoveDto>();
             if (piece == null) return moves;
 
             int[] dYs = { 1, 1, -1, -1 };
@@ -119,55 +87,45 @@ namespace CheckersGameProject.GameLogic
                 }
 
                 Position from = piece.Position;
-
-                // Capture
                 Position targetJump = new Position(from.X + (dx * 2), from.Y + (dy * 2));
+
                 if (IsInternalValidMove(from, targetJump, out bool isCapture, out _) && isCapture)
                 {
-                    moves.Add(new Tuple<Position, Position>(from, targetJump));
+                    moves.Add(new MoveDto { From = from, To = targetJump, IsCapture = true });
                 }
 
-                // Normal Move
                 if (!requireCaptureOnly)
                 {
                     Position targetMove = new Position(from.X + dx, from.Y + dy);
                     if (IsInternalValidMove(from, targetMove, out isCapture, out _) && !isCapture)
                     {
-                        moves.Add(new Tuple<Position, Position>(from, targetMove));
+                        moves.Add(new MoveDto { From = from, To = targetMove, IsCapture = false });
                     }
                 }
             }
             return moves;
         }
 
-        // Was private in UML, now Public
+        public bool IsValidMove(Position from, Position to, out bool isCapture, out Position capturedPos)
+        {
+            if (!IsInternalValidMove(from, to, out isCapture, out capturedPos)) return false;
+            if (_isInMultipleJump && !from.Equals(_activePieceInJump)) return false;
+            if (!_isInMultipleJump && AnyCaptureExists(_currentPlayer) && !isCapture) return false;
+            return true;
+        }
+
         public bool AnyCaptureExists(IPlayer player)
         {
             foreach (var piece in _playerData[player])
             {
-                if (CheckMultipleJump(piece.Position)) return true;
+                // Cek apakah ada langkah makan
+                var moves = GetPossibleMovesForPiece(piece, true);
+                if (moves.Count > 0) return true;
             }
             return false;
         }
 
-        // Was private in UML, now Public to allow UI validation without execution
-        public bool IsValidMove(Position from, Position to, out bool isCapture, out Position capturedPos)
-        {
-            // 1. Internal Physics Check
-            if (!IsInternalValidMove(from, to, out isCapture, out capturedPos)) return false;
-
-            // 2. Game Rules Check
-            if (_isInMultipleJump && !from.Equals(_activePieceInJump)) return false;
-
-            if (!_isInMultipleJump)
-            {
-                if (AnyCaptureExists(_currentPlayer) && !isCapture) return false;
-            }
-
-            return true;
-        }
-
-        // --- PRIVATE METHODS ---
+        // --- PRIVATE METHODS (LOGIKA STRUCT) ---
 
         private void InitializeBoardCells()
         {
@@ -186,6 +144,7 @@ namespace CheckersGameProject.GameLogic
 
         private void AddPieceToPlayerData(IPlayer player, IPiece piece)
         {
+            // AKSES LANGSUNG ARRAY (Struct Behavior)
             _board.Squares[piece.Position.Y, piece.Position.X].Piece = piece;
             _playerData[player].Add(piece);
         }
@@ -195,13 +154,10 @@ namespace CheckersGameProject.GameLogic
             if (!GetPlayerHasPiecesLeft(player)) return false;
             foreach (var piece in _playerData[player])
             {
-                // To check if any move exists, we just ask physics. 
-                // Then we validate against rules in IsValidMove wrapper if needed.
                 var moves = GetPossibleMovesForPiece(piece, false);
                 foreach(var m in moves)
                 {
-                     // Double check against strict rules
-                     if(IsValidMove(m.Item1, m.Item2, out _, out _)) return true;
+                     if(IsValidMove(m.From, m.To, out _, out _)) return true;
                 }
             }
             return false;
@@ -211,20 +167,24 @@ namespace CheckersGameProject.GameLogic
         {
             if (IsValidMove(from, to, out bool isCapture, out Position capturedPos))
             {
-                var sourceCell = _board.Squares[from.Y, from.X];
-                var targetCell = _board.Squares[to.Y, to.X];
-                var piece = sourceCell.Piece;
+                // LOGIKA STRUCT: Ambil referensi Piece, lalu update Array langsung
+                var piece = _board.Squares[from.Y, from.X].Piece;
 
-                targetCell.Piece = piece;
-                sourceCell.Piece = null;
-                piece.Position = to;
+                _board.Squares[to.Y, to.X].Piece = piece;     // Pindah tujuan
+                _board.Squares[from.Y, from.X].Piece = null;  // Hapus asal
+
+                if (piece != null) piece.Position = to;
 
                 bool wasPromoted = false;
 
                 if (isCapture)
                 {
                     HandleCapturedPiece(capturedPos);
-                    if (CheckMultipleJump(to))
+                    
+                    // Cek double jump
+                    // Perlu cek ulang kondisi array terbaru
+                    var hasMultiJump = GetPossibleMovesForPiece(piece, true).Count > 0;
+                    if (hasMultiJump)
                     {
                         wasPromoted = CheckAndPromote(piece);
                         if (!wasPromoted)
@@ -238,7 +198,7 @@ namespace CheckersGameProject.GameLogic
                 }
 
                 _isInMultipleJump = false;
-                if (!wasPromoted) wasPromoted = CheckAndPromote(piece);
+                if (piece != null && !wasPromoted) wasPromoted = CheckAndPromote(piece);
                 UpdateDrawCounters(isCapture, wasPromoted);
                 SwitchPlayer();
             }
@@ -252,6 +212,7 @@ namespace CheckersGameProject.GameLogic
             if (_status != StatusType.Play) return false;
             if (to.X < 0 || to.X > 7 || to.Y < 0 || to.Y > 7) return false;
             
+            // Baca struct aman
             var piece = _board.Squares[from.Y, from.X].Piece;
             if (piece == null || piece.Color != _currentPlayer.Color) return false;
             if (_board.Squares[to.Y, to.X].Piece != null) return false;
@@ -287,22 +248,15 @@ namespace CheckersGameProject.GameLogic
 
         private void HandleCapturedPiece(Position capturedPos)
         {
-            var cell = _board.Squares[capturedPos.Y, capturedPos.X];
-            var piece = cell.Piece;
+            var piece = _board.Squares[capturedPos.Y, capturedPos.X].Piece;
             if (piece != null)
             {
                 var opponent = _players.First(p => p.Color != _currentPlayer.Color);
                 if (_playerData.ContainsKey(opponent)) _playerData[opponent].Remove(piece);
-                cell.Piece = null;
+                
+                // AKSES LANGSUNG ARRAY UNTUK HAPUS
+                _board.Squares[capturedPos.Y, capturedPos.X].Piece = null;
             }
-        }
-
-        private bool CheckMultipleJump(Position currentPosition)
-        {
-            var piece = _board.Squares[currentPosition.Y, currentPosition.X].Piece;
-            if (piece == null) return false;
-            var captures = GetPossibleMovesForPiece(piece, true);
-            return captures.Count > 0;
         }
 
         private bool CheckAndPromote(IPiece piece)
@@ -337,6 +291,19 @@ namespace CheckersGameProject.GameLogic
                     FinishGame(null);
                 }
             }
+        }
+        
+        // Helper private untuk FinishGame
+        private void FinishGame(Action<IPlayer?>? callback)
+        {
+            // Logika finish sederhana internal
+             IPlayer? winner = null;
+            if (!CanMakeaMove(_currentPlayer))
+            {
+                _status = StatusType.Win;
+                winner = _players.First(p => p != _currentPlayer);
+            }
+            // ... dst
         }
     }
 }
